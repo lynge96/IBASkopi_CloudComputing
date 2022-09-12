@@ -5,20 +5,40 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using DailyProduction.Model;
+using Azure.Data.Tables;
+using Azure;
 
 namespace IbasAPI.Controllers
 {
+
     [ApiController]
     [Route("[controller]")]
     public class DailyProductionController : ControllerBase
     {
+        TableClient client;
+
+        string MyPK = "PartitionKey";
+        string MyRK = "id-001";
+        string filter = TableOdataFilter.Create($"PartitionKey eq {MyPK} or RowKey eq {MyRK}");
 
         private List<DailyProductionDTO> _productionRepo;
         private readonly ILogger<DailyProductionController> _logger;
 
+
         public DailyProductionController(ILogger<DailyProductionController> logger)
         {
             _logger = logger;
+
+            var client = new TableClient(
+                new Uri("https://ibasstorageacc.table.core.windows.net/IBASProduktion2020"),
+                "IBASProduktion2020",
+                new TableSharedKeyCredential("ibasstorageacc", "PIMKpwenxJ5VKfpMwJaR3DAYp4UeTvCMXerG7TOcoOTAjYuJx5ocTVBXW5qpNOGMJXZ48d9JJpgI+AStilpN7w=="));
+            client.Create();
+
+            
+           // client = new TableClient("DefaultEndpointsProtocol=https;AccountName=ibasstorageacc;AccountKey=PIMKpwenxJ5VKfpMwJaR3DAYp4UeTvCMXerG7TOcoOTAjYuJx5ocTVBXW5qpNOGMJXZ48d9JJpgI+AStilpN7w==;EndpointSuffix=core.windows.net", "IBASProduktion2020");
+            
+
             _productionRepo = new List<DailyProductionDTO>
             {
                 new DailyProductionDTO {Date = new DateTime(2020, 1, 31), Model = BikeModel.IBv1, ItemsProduced = 12},
@@ -65,6 +85,9 @@ namespace IbasAPI.Controllers
         [HttpGet]
         public IEnumerable<DailyProductionDTO> Get()
         {
+
+            Pageable<DailyProductionDTO> entities = client.Query<DailyProductionDTO>(filter: filter);
+
             return _productionRepo;
         }
     }
