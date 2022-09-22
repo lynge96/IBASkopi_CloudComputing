@@ -17,11 +17,8 @@ namespace IbasAPI.Controllers
     {
         TableClient client;
 
-        string MyPK = "PartitionKey";
-        string MyRK = "id-001";
-        string filter = TableOdataFilter.Create($"PartitionKey eq {MyPK} or RowKey eq {MyRK}");
-
         private List<DailyProductionDTO> _productionRepo;
+
         private readonly ILogger<DailyProductionController> _logger;
 
 
@@ -29,17 +26,16 @@ namespace IbasAPI.Controllers
         {
             _logger = logger;
 
-            var client = new TableClient(
+            client = new TableClient(
                 new Uri("https://ibasstorageacc.table.core.windows.net/IBASProduktion2020"),
                 "IBASProduktion2020",
                 new TableSharedKeyCredential("ibasstorageacc", "PIMKpwenxJ5VKfpMwJaR3DAYp4UeTvCMXerG7TOcoOTAjYuJx5ocTVBXW5qpNOGMJXZ48d9JJpgI+AStilpN7w=="));
-            client.Create();
 
             
            // client = new TableClient("DefaultEndpointsProtocol=https;AccountName=ibasstorageacc;AccountKey=PIMKpwenxJ5VKfpMwJaR3DAYp4UeTvCMXerG7TOcoOTAjYuJx5ocTVBXW5qpNOGMJXZ48d9JJpgI+AStilpN7w==;EndpointSuffix=core.windows.net", "IBASProduktion2020");
             
 
-            _productionRepo = new List<DailyProductionDTO>
+           /* _productionRepo = new List<DailyProductionDTO>
             {
                 new DailyProductionDTO {Date = new DateTime(2020, 1, 31), Model = BikeModel.IBv1, ItemsProduced = 12},
                 new DailyProductionDTO {Date = new DateTime(2020, 2, 28), Model = BikeModel.IBv1, ItemsProduced = 32},
@@ -79,16 +75,43 @@ namespace IbasAPI.Controllers
                 new DailyProductionDTO {Date = new DateTime(2020, 10, 31), Model = BikeModel.evIB200, ItemsProduced = 51},
                 new DailyProductionDTO {Date = new DateTime(2020, 11, 30), Model = BikeModel.evIB200, ItemsProduced = 61},
                 new DailyProductionDTO {Date = new DateTime(2020, 12, 31), Model = BikeModel.evIB200, ItemsProduced = 88}
-            };
+            };*/
         }
         
         [HttpGet]
         public IEnumerable<DailyProductionDTO> Get()
         {
+            List<DailyProductionDTO> nyListe = new List<DailyProductionDTO>();
 
-            Pageable<DailyProductionDTO> entities = client.Query<DailyProductionDTO>(filter: filter);
+            Pageable<TableEntity> entities2 = client.Query<TableEntity>();
 
-            return _productionRepo;
+
+            foreach (TableEntity items in entities2)
+            {
+                DailyProductionDTO cykelProd = new DailyProductionDTO();
+
+                cykelProd.Date = DateTime.Parse(items.RowKey);
+
+                if (int.Parse(items.PartitionKey) == 1)
+                {
+                    cykelProd.Model = BikeModel.IBv1;
+                }
+                else if (int.Parse(items.PartitionKey) == 2)
+                {
+                    cykelProd.Model = BikeModel.evIB100;
+                }
+                else if (int.Parse(items.PartitionKey) == 3)
+                {
+                    cykelProd.Model = BikeModel.evIB200;
+                }
+
+                cykelProd.ItemsProduced = items.GetInt32("itemsProduced");
+
+                nyListe.Add(cykelProd);
+
+            }
+
+            return nyListe;
         }
     }
 }
